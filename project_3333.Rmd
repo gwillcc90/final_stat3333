@@ -22,9 +22,11 @@ We will use the columns: state, year, abortionslt15,	abortions1517,	abortions181
 
 
 Some questions to ask:
+ - Can we find an estimation region for the true mean abortions of women over 40
+ - What is an estimation region for the true mean of abortions of women and girls in Alabama.
 
  - Is there a statistically significant difference in mean abortion rates among age groups of [young] women.
- - Is there a statistically significant difference in mean abortion rates among states
+ - Is there a statistically significant difference in mean abortion rates among states.
  - Is there a statistically significant difference in mean abortion rates among the years.
 
 
@@ -33,7 +35,7 @@ abortions <- read.csv(file.choose())
 ```
 
 ```{r, echo = F}
-abortions <- abortions[,c('abortionslt15',	
+abortions <- abortions[,c('state','year','abortionslt15',	
                           'abortions1517',	
                           'abortions1819',
                           'abortions1519',	'abortionslt20',	'abortions2024',	'abortions2529',	'abortions3034',	'abortions3539',	'abortions40plus')]
@@ -45,13 +47,13 @@ dim(abortions)
 ## round(cor(abortions[,-c(1,2,102,103)]),2)
 ```
 
-```{r}
+```{r fill_na}
 abortions[is.na(abortions)] <- 0
 ```
 
 
-Lets test the normality of the columns in the dataset. There are 103 columns (features) in the dataset, so it isn't practical to plot them all, but we can loop a shapiro test using significance level $\alpha = .05$ and have it tell us which columns are normal.
-```{r}
+Lets test the normality of the columns in the dataset. There are 12 columns (features) in the dataset, so it isn't practical to plot them all, but we can loop a shapiro test using significance level $\alpha = .05$ and have it tell us which columns are normal.
+```{r check_normality}
 # Create a vector to keep track of which columns contain normally distributed data
 normal_columns <- c() 
 i <- 0
@@ -74,7 +76,7 @@ normal_columns # No columns have normally distributed data
 
 We can see that no columns contain normally distributed data. Because there is no normally distributed data, we will use resampling methods to estimate population attributes.
 
-First, let's look at the mean difference in age groups
+First, let's look at the mean difference in abortions by age groups.
 
 ```{r}
 
