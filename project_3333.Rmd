@@ -22,10 +22,12 @@ We will use the columns: state, year, abortionslt15,	abortions1517,	abortions181
 
 
 Some questions to ask:
- - Can we find an estimation region for the true mean abortions of women over 40
+ - Can we find an estimation region for the true mean abortions for all age groups of women.
+ - 
  - What is an estimation region for the true mean of abortions of women and girls in Alabama.
 
- - Is there a statistically significant difference in mean abortion rates among age groups of [young] women.
+
+ - Is there a statistically significant difference in mean abortion rates among age groups of women and girls.
  - Is there a statistically significant difference in mean abortion rates among states.
  - Is there a statistically significant difference in mean abortion rates among the years.
 
@@ -35,12 +37,13 @@ abortions <- read.csv(file.choose())
 ```
 
 ```{r, echo = F}
-abortions <- abortions[,c('state','year','abortionslt15',	
-                          'abortions1517',	
-                          'abortions1819',
-                          'abortions1519',	'abortionslt20',	'abortions2024',	'abortions2529',	'abortions3034',	'abortions3539',	'abortions40plus')]
+abortions <- abortions[,c('state','year','abortionratelt15',	
+                          'abortionrate1517',	
+                          'abortionrate1819',	'abortionrate2024',	'abortionrate2529',	'abortionrate3034',	'abortionrate3539',	'abortionrate40plus')]
 
 dim(abortions)
+
+head(abortions)
 ```
 
 ```{r overall_correlation}
@@ -76,9 +79,88 @@ normal_columns # No columns have normally distributed data
 
 We can see that no columns contain normally distributed data. Because there is no normally distributed data, we will use resampling methods to estimate population attributes.
 
-First, let's look at the mean difference in abortions by age groups.
+ - Is there a statistically significant difference in mean abortion rates among age groups of women and girls.
 
 ```{r}
+ab <- read.csv(file.choose())
+head(ab)
+
+ab <- subset(ab, Metric == 'Abortion Rate')
+head(ab)
+dim(ab)
+
+age.range <- as.factor(ab$Age.Range)
+
+observed <- anova(lm(Events.per.1.000.women~age.range,data = ab))$F[1]
+
+n <- nrow(ab)
+
+f.stat.vector <- numeric(N)
+
+for (i in 1:N)
+{
+  index <- sample(n)
+  rate.perm <- ab$Events.per.1.000.women[index]
+  f.stat.vector[i] <- anova(lm(rate.perm ~age.range))$F[1]
+}
+
+(sum(f.stat.vector >= observed) + 1) / (N+1)
+
+
+library(coin)
+oneway_test(ab$Events.per.1.000.women~age.range,
+                   alternative = 'two.sided',
+                   distribution = approximate(nresample = 9999))
+
+TukeyHSD(aov(ab$Events.per.1.000.women~age.range))
+         
+         
+```
+
+
+
+EXCESS CODE
+```{r}
+# ab <- abortions[,c('abortionratelt15',	
+#                           'abortionrate1517',	
+#                           'abortionrate1819',	'abortionrate2024',	'abortionrate2529',	'abortionrate3034',	'abortionrate3539',	'abortionrate40plus')]
+# 
+# obs.diff <- mean(ab[,'abortionratelt15']) - mean(ab[,'abortionrate1517']) - mean(ab[,'abortionrate1819']) - mean(ab[,'abortionrate2024']) - mean(ab[,'abortionrate2529']) - mean(ab[,'abortionrate3034']) - mean(ab[,'abortionrate3539']) - mean(ab[,'abortionrate40plus'])
+# 
+# 
+# N <- 10^4
+# n <- nrow(abortions)
+# 
+# obs.diff.boot.vec <- numeric(N)
+# 
+# 
+# for (j in 1:N)
+# {
+#   # For each iteration, loop through resample all columns and store in
+#   lt15.boot <- mean(sample(ab[,1], n, replace = T))
+#   a1517.boot <- mean(sample(ab[,2], n, replace = T))
+#   a1819.boot <-  mean(sample(ab[,3], n, replace = T))
+#   a2024.boot <- mean(sample(ab[,4], n, replace = T))
+#   a2529.boot <- mean(sample(ab[,5], n, replace = T))
+#   a3034.boot <- mean(sample(ab[,6], n, replace = T))
+#   a3539.boot <- mean(sample(ab[,7], n, replace = T))
+#   a40plus.boot <- mean(sample(ab[,8], n, replace = T))
+#   
+#   obs.diff.boot.vec[j] <- lt15.boot - a1517.boot - a1819.boot - a2024.boot - a2529.boot - a3034.boot - a3539.boot - a40plus.boot
+# }
+# 
+# quantile(obs.diff.boot.vec, c(.05,.95))
+
+
 
 ```
 
+
+
+```{r}
+d <- subset(abortions, state == 'AL', select = c('abortionratelt15','year'))
+
+runs(d, k = 6)
+
+head(d)
+```
