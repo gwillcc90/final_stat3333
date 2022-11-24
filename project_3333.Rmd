@@ -12,18 +12,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Introduction
-Abortion is a sensitive topic in the United States with the legendary court ruling of *Roe vs. Wade* being overturned in June 2022. While sensitive, it is still an interesting topic because of the different viewpoints: are we killing a baby, or are we killing a fetus? The biology is irrelevant, though, in statistical analyses. Because of the amount of data, it is a good topic of analyses and we shall compare statistics among the categorized demographics of recorded abortions, to see if there are any disparities*****
+Abortion is a sensitive topic in the United States with the legendary court ruling of *Roe vs. Wade* being overturned in June 2022. While sensitive, it is still an interesting topic because of the different viewpoints: are we killing a baby, or are we killing a fetus? The biology is irrelevant, though, in statistical analyses. Because of the amount of data, it is a good topic of analyses and we shall compare statistics among the categorized demographics of recorded abortions, to see if there are any disparities*****, and double-check claims.
 
 We are using the "Pregnancies, Births and Abortions in the United States: National and State Trends by Age" dataset called `NationalAndStatePregnancy_PublicUse` from the Guttmacher Institute website which sources its data from numerous different organizations like the World Health Origanization (WHO) and UNICEF.
 
-We will use the columns: state, year, abortionslt15,	abortions1517,	abortions1819,	abortions1519,	abortionslt20,	abortions2024,	abortions2529,	abortions3034,	abortions3539,	abortions40plus, which are the number of abortions in the age range. For example `abortionslt15` is the number of abortions of the given U.S. state and year of girls less than 15 years old, and `abortions2024` is the number of abortions of ladies of ages 20-24.
+We will use the columns: state, year, abortionratelt15,	abortionrate1517,	abortionrate1819,	abortionrate2024,	abortionrate2529,	abortionrate3034,	abortionrate3539,	abortionrate40plus, which is the rate of abortion per 1000 [young] women in the age range. For example `abortionratelt15` is the rate of abortions of the given U.S. state and year of girls less than 15 years old, and `abortionrate2024` is the rate of abortions of ladies of ages 20-24, per 1000 people.
 
 
 
 
 Some questions to ask:
  - Can we find an estimation region for the true mean abortions for all age groups of women.
- - 
  - What is an estimation region for the true mean of abortions of women and girls in Alabama.
 
 
@@ -32,135 +31,219 @@ Some questions to ask:
  - Is there a statistically significant difference in mean abortion rates among the years.
 
 
-```{r, echo = F}
+```{r load_data, echo = F}
 abortions <- read.csv(file.choose())
 ```
 
-```{r, echo = F}
-abortions <- abortions[,c('state','year','abortionratelt15',	
+```{r libraries, echo = F, warning = F}
+library(rlang, quietly = T)
+library(dplyr, quietly = T)
+```
+
+
+```{r filter_abortion_rates, echo = F}
+abortions <- abortions[,c('state','year',
+                          'abortionratelt15',	
                           'abortionrate1517',	
-                          'abortionrate1819',	'abortionrate2024',	'abortionrate2529',	'abortionrate3034',	'abortionrate3539',	'abortionrate40plus')]
+                          'abortionrate1819',
+                          'abortionrate2024',
+                          'abortionrate2529',
+                          'abortionrate3034',
+                          'abortionrate3539',
+                          'abortionrate40plus')]
 
-dim(abortions)
-
-head(abortions)
+# dimension of dataset
+#dim(abortions)
 ```
 
-```{r overall_correlation}
-## round(cor(abortions[,-c(1,2,102,103)]),2)
-```
 
-```{r fill_na}
+NEED TO CHECK IF DIFFERENCE WITHOUT FILLING VALUES
+```{r fill_na, echo = F}
+# Want to fill NA values with 0?
 abortions[is.na(abortions)] <- 0
 ```
 
+First, let's look at the most recent mean abortion rate per thousand by age group for all states. This is for the year 2017.
 
-Lets test the normality of the columns in the dataset. There are 12 columns (features) in the dataset, so it isn't practical to plot them all, but we can loop a shapiro test using significance level $\alpha = .05$ and have it tell us which columns are normal.
-```{r check_normality}
-# Create a vector to keep track of which columns contain normally distributed data
-normal_columns <- c() 
-i <- 0
+```{r mean_rate_2017, echo = F}
+mean_by_year <- aggregate(cbind(abortionratelt15,
+                abortionrate1517, abortionrate1819, abortionrate2024,
+                abortionrate2529,abortionrate3034, abortionrate3539, 
+                abortionrate40plus)~year, data = abortions, mean)
 
-for (column in colnames(abortions))
-{
-  # If the class if numeric, tests its normality
-  if (class(abortions[,column]) == 'numeric' | 
-      class(abortions[,column]) == 'integer' )
-  {
-    # If any of the columns are normal, print them
-    if ((shapiro.test(abortions[,column])$p.value > .05)) {
-      normal_columns[i] <- column
-      i <- i + 1
-      }
-  }
-}
-normal_columns # No columns have normally distributed data
+subset(mean_by_year, year == 2017)
+########## Checking means individually to make sure above code functions#######
+# y2017 <- subset(abortions, year == 2017)
+# y2017
+# 
+# mean(y2017[,'abortionratelt15'])
+# mean(y2017[,'abortionrate1517'])
 ```
 
-We can see that no columns contain normally distributed data. Because there is no normally distributed data, we will use resampling methods to estimate population attributes.
+The mean abortion rate of all United States looks good. On average, the abortion rate for girls under 15 is .69, and the rate for women 40 and older is 2.65. Of course, this is given samples from each state in 2017 and is not necessarily representative of all abortions that occurred. We shall investigate further with statistical inference tests.
 
- - Is there a statistically significant difference in mean abortion rates among age groups of women and girls.
+On the page https://www.guttmacher.org/article/2022/06/long-term-decline-us-abortions-reverses-showing-rising-need-abortion-supreme-court the Guttmacher institute claims that the declining abortion rates are reversing as of 2017 saying "An increase in abortion numbers is a positive development if it means people are getting the health care they want and need". But, due to the possible uncertainty in the samples, we want to see if there is statistically significant evidence that the abortion rate was dropping in the first place.
+
+### Question: - Is there a statistically significant difference in mean abortion rates from the years 1988 - 2017.
+
+We will use the ANOVA test to see if there is a difference in means among the years.
+
+$H_0: \mu_{1988} = ... = \mu_{2017}$
+$H_A: \mu_{1988} \neq ... \neq \mu_{2017}$
+
+
+```{r create_mean_rate_column, echo = F}
+# Add the rate abortion numbers column
+abortions$MeanRate <- rowSums(abortions[3:10])/8
+```
+
+```{r ANOVA_test_of_means, echo = F}
+# Is there a statistically significant difference in mean abortion rates among the years.
+year <- as.factor(abortions$year)
+observed <- anova(lm(MeanRate ~ year, data = abortions))$F[1]
+
+n <- length(abortions$MeanRate)
+N <- 10^4 - 1
+results <- numeric(N)
+for (i in 1:N)
+{
+ index <- sample(n)
+ MeanRate.perm <- abortions$MeanRate[index]
+ # Ask about this
+ results[i] <- anova(lm(MeanRate.perm ~ year, data = abortions))$F[1]
+}
+
+(sum(results >= observed) + 1) / (N + 1)
+```
+
+P-value is very small, so we confirm that there is a statistically significant difference in mean abortion rate among the years 
+
+### Is the variance equal
+
+
+##################################
+
+
+### Question: Is there a difference between the mean abortion rate for 1988 and 2017 in the U.S.
+
+We subsetted the state for the specific years and plot a histogram to see....
+
+```{r create_1988_2017_subsets, echo = F}
+year1988 <- subset(abortions, year == 1988, select = c(year, 
+                                                       MeanRate))
+
+mean(year1988$MeanRate)
+
+year2017 <- subset(abortions, year == 2017, select = c(year, 
+                                                       MeanRate))
+```
+
+
+```{r density_88_17}
+plot(density(year1988$MeanRate), col = 'red', 
+     main = 'Density of the Mean Abortion Rate: 1988 and 2017')
+lines(density(year2017$MeanRate), col = 'blue')
+legend('topright', c('red: 1988', 'blue: 2017'))
+```
+
 
 ```{r}
-ab <- read.csv(file.choose())
-head(ab)
 
-ab <- subset(ab, Metric == 'Abortion Rate')
-head(ab)
-dim(ab)
+qqnorm(year1988$MeanRate)
+qqline(year1988$MeanRate)
 
-age.range <- as.factor(ab$Age.Range)
+qqnorm(year2017$MeanRate)
+qqline(year2017$MeanRate)
 
-observed <- anova(lm(Events.per.1.000.women~age.range,data = ab))$F[1]
 
-n <- nrow(ab)
 
-f.stat.vector <- numeric(N)
+#BOOTSTRAP 2-sample test for two population means
+N <- 10^4
+
+xbar1988 <- mean(unlist(year1988$MeanRate))
+xbar2017 <- mean(unlist(year2017$MeanRate))
+
+n1 <- length(year1988$MeanRate)
+n2<- length(year2017$MeanRate)
+
+mean.dif <- xbar1988-xbar2017
+
+boot.dif <- numeric(N)
+
+for (i in 1:N){
+x <- sample(year1988$MeanRate, n1, replace = TRUE)
+y <- sample(year2017$MeanRate, n2, replace = TRUE)
+boot.dif[i] <- mean(x) - mean(y)
+}
+
+quantile(boot.dif, c(.05,.95))
+hist(boot.dif)
+abline(v = mean.dif, col="red")
+
+```
+
+```{r, echo = F}
+# permutation
+N <- 10^4
+n1 <- length(year1988$MeanRate)
+n1
+
+n2 <- length(year2017$MeanRate)
+
+years_combined <- c(year2017$MeanRate, year1988$MeanRate)
+
+mean.diff <- numeric(N)
 
 for (i in 1:N)
 {
-  index <- sample(n)
-  rate.perm <- ab$Events.per.1.000.women[index]
-  f.stat.vector[i] <- anova(lm(rate.perm ~age.range))$F[1]
+  indices <- sample(n1, replace = F)
+  mean.diff <- years_combined[indices] - years_combined[-indices]
 }
 
-(sum(f.stat.vector >= observed) + 1) / (N+1)
+hist(mean.diff)
 
-
-library(coin)
-oneway_test(ab$Events.per.1.000.women~age.range,
-                   alternative = 'two.sided',
-                   distribution = approximate(nresample = 9999))
-
-TukeyHSD(aov(ab$Events.per.1.000.women~age.range))
-         
-         
-```
-
-
-
-EXCESS CODE
-```{r}
-# ab <- abortions[,c('abortionratelt15',	
-#                           'abortionrate1517',	
-#                           'abortionrate1819',	'abortionrate2024',	'abortionrate2529',	'abortionrate3034',	'abortionrate3539',	'abortionrate40plus')]
-# 
-# obs.diff <- mean(ab[,'abortionratelt15']) - mean(ab[,'abortionrate1517']) - mean(ab[,'abortionrate1819']) - mean(ab[,'abortionrate2024']) - mean(ab[,'abortionrate2529']) - mean(ab[,'abortionrate3034']) - mean(ab[,'abortionrate3539']) - mean(ab[,'abortionrate40plus'])
-# 
-# 
-# N <- 10^4
-# n <- nrow(abortions)
-# 
-# obs.diff.boot.vec <- numeric(N)
-# 
-# 
-# for (j in 1:N)
-# {
-#   # For each iteration, loop through resample all columns and store in
-#   lt15.boot <- mean(sample(ab[,1], n, replace = T))
-#   a1517.boot <- mean(sample(ab[,2], n, replace = T))
-#   a1819.boot <-  mean(sample(ab[,3], n, replace = T))
-#   a2024.boot <- mean(sample(ab[,4], n, replace = T))
-#   a2529.boot <- mean(sample(ab[,5], n, replace = T))
-#   a3034.boot <- mean(sample(ab[,6], n, replace = T))
-#   a3539.boot <- mean(sample(ab[,7], n, replace = T))
-#   a40plus.boot <- mean(sample(ab[,8], n, replace = T))
-#   
-#   obs.diff.boot.vec[j] <- lt15.boot - a1517.boot - a1819.boot - a2024.boot - a2529.boot - a3034.boot - a3539.boot - a40plus.boot
-# }
-# 
-# quantile(obs.diff.boot.vec, c(.05,.95))
-
+quantile(mean.diff, c(.05, .95))
 
 
 ```
 
 
+
+############################################################
+# New YORK!
 
 ```{r}
-d <- subset(abortions, state == 'AL', select = c('abortionratelt15','year'))
-
-runs(d, k = 6)
-
-head(d)
+abortions %>%  select(state,MeanRate) %>%group_by(state) %>% mutate('state_mean' = mean(MeanRate)) %>% arrange(desc(state_mean))
 ```
+
+NY has highest rate of abortion with mean = 31.43.
+We want to perform the interval test to confirm the true mean interval of NY
+
+```{r}
+NY_rate <- filter(abortions, state == "NY") %>% select(MeanRate)
+NY_rate <- as.vector(unlist(NY_rate))
+NY_rate
+summary(NY_rate)
+```
+```{r}
+xbar <- 31.43
+N <- 10^4
+n <- 17 #number of years
+
+Tstar <- numeric(N)
+
+for (i in 1:N)
+{
+x <-sample(NY_rate, size = n, replace = T)
+Tstar[i] <- (mean(x)-xbar)/(sd(x)/sqrt(n))
+}
+quantile(Tstar, c(0.05, 0.95)) # the first value is negative and the second positive, so we switch
+
+xbar - quantile(Tstar, c(.95, .05))*sd(NY_rate)/sqrt(n)
+hist(Tstar, xlab = "T*", main = "Bootstrap distribution of T*")
+qqnorm(Tstar)
+qqline(Tstar)
+
+```
+From the bootstrap distribution, we can see the 90% CI for the true mean is (28.73, 34.305)
+
