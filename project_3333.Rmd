@@ -253,31 +253,33 @@ For both resampling methods above, we see that the true mean abortion rate per 1
 
 From the results we see there is a statistically significant difference, but we know in practice that the permutation test is shown to be more powerful. We will use a permutation test with the assumption that there is no difference in mean rates by pooling the mean rates together, then drawing samples without replacement from the pooling.
 
-```{r, echo = F, fig.width=3.8, fig.height=3.8}
+```{r permute mean 1988_2017, echo = F, fig.width=3.8, fig.height=3.8}
 # permutation
 N <- 10^4
 n1 <- length(year1988$MeanRate)
-n1
 
 n2 <- length(year2017$MeanRate)
 
 years_combined <- c(year2017$MeanRate, year1988$MeanRate)
-obs.diff <- xbar2017 - xbar1988
+obs.diff <- abs(xbar2017 - xbar1988)
 
 mean.diff <- numeric(N)
 
 for (i in 1:N)
 {
   indices <- sample(n1 + n2, n1, replace = F)
-  mean.diff <- years_combined[indices] - years_combined[-indices]
+  mean.diff[i] <- mean(years_combined[indices]) - mean(years_combined[-indices])
 }
 
-hist(mean.diff, main = 'Permutation distribution of difference in means',
-     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8,
-     xlim = range(-45, 25), ylim = range(0, 25))
+# hist(mean.diff, main = 'Permutation distribution of difference in means',
+#      cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8,
+#      xlim = range(-20, 25), ylim = range(0, 25))
 # abline(v = obs.diff)
 
-(sum(mean.diff > obs.diff) + 1)/(N+1)
+
+hist(mean.diff, main = 'Permutation distribution of difference in means',
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
+2*(sum(mean.diff > obs.diff) + 1)/(N+1)
 ```
 
 Using a permutation test to see if the difference could have been obtained by chance, we see that the p-value is very low and at a 1% significance level we conclude that there is a statistically significant drop in the mean abortion rate from 1988 to 2017 - that is the consensus among all tests.
@@ -300,13 +302,13 @@ abortions %>%
 So which state has the highest abortion rate? It's none other than the "Empire State" - NY has highest rate of abortion with mean = 31.43.
 Let's use resampling to find an interval estimate for the true mean abortion rate over all 30 years (1988 - 2017).
 
-```{r}
+```{r, echo = F}
 NY_rate <- filter(abortions, state == "NY") %>% select(MeanRate)
 NY_rate <- as.vector(unlist(NY_rate))
 #summary(NY_rate)
 ```
 
-```{r bootstrap t, fig.width=3.8, fig.height=3.8}
+```{r bootstrap t, fig.width=3.8, fig.height=3.8, echo = F}
 xbar <- 31.43
 N <- 10^4
 n <- 17 #number of years
@@ -318,7 +320,7 @@ for (i in 1:N)
 x <-sample(NY_rate, size = n, replace = T)
 Tstar[i] <- (mean(x)-xbar)/(sd(x)/sqrt(n))
 }
-quantile(Tstar, c(0.05, 0.95)) # the first value is negative and the second positive, so we switch
+# quantile(Tstar, c(0.05, 0.95)) # the first value is negative and the second positive, so we switch
 
 xbar - quantile(Tstar, c(.95, .05))*sd(NY_rate)/sqrt(n)
 hist(Tstar, xlab = "T*", main = "Bootstrap distribution of T*",
@@ -326,7 +328,40 @@ hist(Tstar, xlab = "T*", main = "Bootstrap distribution of T*",
 qqnorm(Tstar, cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
 qqline(Tstar)
 ```
-From the bootstrap distribution, we can see the 90% CI for the true mean is (28.73, 34.305)
+From the bootstrap distribution, we can see (28.66640 34.24376) is one of the infinitely many 90% CIs that could contain the true mean abortion rate for New York.
+
+Since we live in TexASS, a "red" state, it may be interesting to study the ratio between the mean abortion rates of Texas and New York since New York is a "blue" state.
+
+```{r Texas subset, echo=F}
+TX_rate <- filter(abortions, state == "TX") %>% select(MeanRate)
+TX_rate <- as.vector(unlist(TX_rate))
+```
+
+```{r bootstrap ratio tx_ny, echo=F}
+
+obs.rat <- mean(TX_rate)/mean(NY_rate)
+
+boot.rat <- numeric(N)
+for (i in 1:N)
+{
+  x <- sample(TX_rate, length(TX_rate), replace = T)
+  y <- sample(NY_rate, length(NY_rate), replace = T)
+  boot.rat[i] <- mean(x)/mean(y)
+}
+
+hist(boot.rat, main = "Bootstrap distribution of mean ratio",
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
+abline(v = obs.rat, col="red")
+
+quantile(boot.rat,c(.05,.95))
+
+qqnorm(boot.rat)
+qqline(boot.rat)
+```
+
+From the bootstrap percentile test of the ratio of mean abortion rate of Texas vs New York, we see that (0.3672198 0.4995415) is one of the infinitely many 90% CIs that could contain the true ratio of mean abortion rates. From this we infer that New York has somewhere between 50% to 63% more abortions than Texas.
+
+
 
 
 ### References
