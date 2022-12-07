@@ -5,6 +5,7 @@ date: "2022-11-18"
 output:
   pdf_document: default
   html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -12,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Introduction
-Abortion is a sensitive topic in the United States with the legendary court ruling of *Roe vs. Wade* being overturned in June 2022. While sensitive, it is still an interesting topic because of the different viewpoints: are we killing a baby, or are we killing a fetus? The biology is irrelevant, though, in statistical analyses. Because of the amount of data, it is a good topic of analyses and we shall compare statistics among the categorized demographics of recorded abortions, to see if there are any disparities*****, and double-check claims.
+Abortion is a sensitive topic in the United States with the legendary court ruling of *Roe vs. Wade* being overturned in June 2022. While sensitive, it is still an interesting topic because of the different viewpoints: are we killing a baby, or are we killing a fetus? The biology is irrelevant, though, in statistical analyses; let's let the data talk. Because of the amount of data, it is a good topic of analyses and we shall compare statistics among the categorized demographics of recorded abortions, and double check the specific claim that the amount of abortions has dropped from 1988 - 2017
 
 We are using the "Pregnancies, Births and Abortions in the United States: National and State Trends by Age" dataset called `NationalAndStatePregnancy_PublicUse` from the Guttmacher Institute website which sources its data from numerous different organizations like the World Health Origanization (WHO) and UNICEF.
 
@@ -32,12 +33,14 @@ Some questions to ask:
 
 
 ```{r load_data, echo = F}
+set.seed(2022)
 abortions <- read.csv(file.choose())
 ```
 
 ```{r libraries, echo = F, warning = F, message=F, include=F}
 library(rlang, quietly = T)
 library(dplyr, quietly = T)
+library(DescTools, quietly = T)
 ```
 
 
@@ -57,7 +60,6 @@ abortions <- abortions[,c('state','year',
 ```
 
 
-NEED TO CHECK IF DIFFERENCE WITHOUT FILLING VALUES
 ```{r fill_na, echo = F}
 # Want to fill NA values with 0?
 abortions[is.na(abortions)] <- 0
@@ -93,15 +95,20 @@ $H_0: \mu_{1988} = ... = \mu_{2017}$
 
 $H_A: \mu_{1988} \neq ... \neq \mu_{2017}$
 
+We created a new column called `MeanRate` that sums the abortion rate (per 1000) among all groups of ladies and divides it by the number of rates we are observing, being eight.
+
 
 ```{r create_mean_rate_column, echo = F}
 # Add the rate abortion numbers column
 abortions$MeanRate <- rowSums(abortions[3:10])/8
+# abortions
 ```
 
 ```{r,echo = F, fig.width=3.8, fig.height=3.8}
 hist(abortions$MeanRate, main = 'Mean Rate of Abortions')
 ```
+
+The histogram shows the distribution of mean abortion rates is not normally distributed, and we are testing to see that there is a statistically significant difference in means among the years. We will use the permutation test to check if the model 
 
 ```{r ANOVA_test_of_means, echo = F}
 # Is there a statistically significant difference in mean abortion rates among the years.
@@ -119,18 +126,12 @@ for (i in 1:N)
  results[i] <- anova(lm(MeanRate.perm ~ year1))$F[1]
 }
 
+hist(results)
+
 (sum(results >= observed) + 1) / (N + 1)
 ```
 
-1e-04
-
-P-value is very small, so we confirm that there is a statistically significant difference in mean abortion rate among the years. We will reject the null hypothesis at a 1% level of significance that the mean abortion rate among the years is the same.
-
-We can inspect which years are different from the others with a TukeyHSD test.
-
-```{r}
-#TukeyHSD(aov(abortions$MeanRate ~ year1))
-```
+Permuting the mean rate by year - making any given rate possible for any given year, we see that the probability of observing an $F_0$ statistic as high as the observedis 1e-04, so we will reject the null hypothesis $H_0: \mu_{1988} = ... = \mu_{2017}$ at even a 1% level of significance in favor of saying the abortion rate differs among the years.
 
 ### Is the variance equal
 
@@ -140,10 +141,17 @@ We can inspect which years are different from the others with a TukeyHSD test.
 
 ### Question: Is there a difference between the mean abortion rate for 1988 and 2017 in the U.S.
 
-$H_0: \mu_{1988} = \mu_{2017}$
-$H_A: \mu_{1988} \neq \mu_{2017}$
+We can just test to see if the recent year is have a smaller mean abortion rate than 1988.
 
-We subsetted the state for the specific years and plot a histogram to see....
+Again, the claim by Guttmacher is that the abortion rate was dropping until around 2017. The website does not currently provide public access to data after 2017, so we will look at the status quo that the past shows a higher abortion rate:
+
+$H_0: \mu_{1988} \geq \mu_{2017}$
+
+versus our test that:
+
+$H_A: \mu_{1988} < \mu_{2017}$
+
+First, a density plot of the mean abortion rates for 1988 and 2017.
 
 ```{r create_1988_2017_subsets, echo = F}
 year1988 <- subset(abortions, year == 1988, select = c(year, 
@@ -154,23 +162,18 @@ year2017 <- subset(abortions, year == 2017, select = c(year,
 ```
 
 
-```{r density_88_17, fig.width=3.8, fig.height=3.8}
+```{r density_88_17, fig.width=5.0, fig.height=5.0}
 plot(density(year1988$MeanRate), col = 'red', 
      main = 'Density of the Mean Abortion Rate: 1988 and 2017')
 lines(density(year2017$MeanRate), col = 'blue')
 legend('topright', c('red: 1988', 'blue: 2017'))
 ```
 
-From plotting the density of the histograms, we see that in the given sample the means are close because the variances overlap. Also the data is not normal so we need to use non-normal testing methods.
+From plotting the density of the histograms, we see that in the given sample the means are close because the variances overlap. But there is a uncertainty in our sample. Are the means really so close as to not have a statistically significant difference? Also the data is not normal so we need to use non-normal testing methods.
 
-```{r}
-# qqnorm(year1988$MeanRate)
-# qqline(year1988$MeanRate)
-# qqnorm(year2017$MeanRate)
-# qqline(year2017$MeanRate)
+We perform a test of the difference in bootstrap sample means between the two years.
 
-
-
+```{r bootstrap_percentile 1988 and 2017, echo = F}
 #BOOTSTRAP 2-sample test for two population means
 N <- 10^4
 
@@ -191,13 +194,60 @@ boot.dif[i] <- mean(x) - mean(y)
 }
 
 quantile(boot.dif, c(.05,.95))
+
+par(mfrow=c(1,2))
 hist(boot.dif)
 abline(v = mean.dif, col="red")
+
+qqnorm(boot.dif)
+qqline(boot.dif)
 
 # (sum(boot.dif >= observed) + 1) / (N + 1)
 ```
 
-From the result we see there is a significant difference, but we know in practice that the permutation test is shown to be more powerful. We will use a permutation test with the assumption that there is no difference in mean rates by pooling the mean rates together, then drawing samples without replacement from the pooling.
+The histogram looks like it approximates the normal distribution as shown with the histogram and qqplot. The interval estimate shows that this interval (10.62489 15.24240) is one of the 90% CIs that could contain the true difference in mean abortion rate, otherwise it could be one of the 10% that does not contain it.
+
+One problem with the last test is that we assume one year's mean rate to be strongly related to the year before it. Using the library `DescTools` function `RunsTest` test the hypothesis
+
+$H_0:$ random samples
+
+vs
+
+$H_A:$ non-random samples
+
+```{r}
+RunsTest(abortions$abortionratelt15)$p.value
+```
+The `RunsTest` shows a p-value approximately 0, so we will reject the null at a 1% level of significance that the observations were collected randomly, and say that any observation has some relation among the others.
+
+With this knowledge, better tests are necessary. We will first create a new column similarly to matched pairs as the difference between years and bootstrap from that column. The reasoning behind this is we know now that there is a relationship among the years so this one column accounts for that.
+
+```{r matched_pairs, echo = F}
+a <- year1988$MeanRate
+b <-year2017$MeanRate
+c <- a - b
+
+mp.boot <- numeric(N)
+
+for (i in 1:N){
+x <- sample(c, length(c), replace = TRUE)
+mp.boot[i] <- mean(x)
+}
+
+par(mfrow=c(1,2))
+hist(mp.boot)
+qqnorm(mp.boot)
+qqline(mp.boot)
+
+quantile(mp.boot,c(.05,.95))
+
+```
+
+The data is not quite normal, but the interval is smaller. (11.29465 14.56972) is one of the infinitely many 95% CIs that could contain the true difference in mean abortion rate in 1988 and 2017.
+
+For both resampling methods above, we see that the true mean abortion rate per 1000 is from 10 to 15 less in 2017 than in 1988.
+
+From the results we see there is a statistically significant difference, but we know in practice that the permutation test is shown to be more powerful. We will use a permutation test with the assumption that there is no difference in mean rates by pooling the mean rates together, then drawing samples without replacement from the pooling.
 
 ```{r, echo = F, fig.width=3.8, fig.height=3.8}
 # permutation
@@ -208,19 +258,20 @@ n1
 n2 <- length(year2017$MeanRate)
 
 years_combined <- c(year2017$MeanRate, year1988$MeanRate)
-obs.diff <- xbar1988 - xbar2017
+obs.diff <- xbar2017 - xbar1988
 
 mean.diff <- numeric(N)
 
 for (i in 1:N)
 {
-  indices <- sample(n1, replace = F)
+  indices <- sample(n1 + n2, n1, replace = F)
   mean.diff <- years_combined[indices] - years_combined[-indices]
 }
 
 hist(mean.diff)
 # abline(v = obs.diff)
-quantile(mean.diff, c(.05, .95))
+
+(sum(mean.diff > obs.diff) + 1)/(N+1)
 ```
 
 Using a permutation test of the mean rates, we see that 0 is contained in the interval that contains the true difference in mean rates. We concluse that there is not enough evidence to suggest the mean rate is different in 2017 from 1988
