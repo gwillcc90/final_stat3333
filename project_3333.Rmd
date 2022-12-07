@@ -330,7 +330,7 @@ qqline(Tstar)
 ```
 From the bootstrap distribution, we can see (28.66640 34.24376) is one of the infinitely many 90% CIs that could contain the true mean abortion rate for New York.
 
-Since we live in TexASS, a "red" state, it may be interesting to study the ratio between the mean abortion rates of Texas and New York since New York is a "blue" state.
+Since we live in Texas, a "red" state, it may be interesting to study the ratio between the mean abortion rates of Texas and New York since New York is a "blue" state.
 
 ```{r Texas subset, echo=F}
 TX_rate <- filter(abortions, state == "TX") %>% select(MeanRate)
@@ -364,7 +364,11 @@ From the bootstrap percentile test of the ratio of mean abortion rate of Texas v
 
 ## Conclusion
 
-Rachel Cu sucks and Will Curkan is the best.
+In conclusion, we found that there is statically significant evidence in the mean abortion rate from the years 1988 to 2017. 
+
+Using the bootstrap percentile technique, we found that there was a statistically significant drop in abortion rate in 2017 compared to 1988. But upon performing a runs test to see if the data was collected randomly, we saw that the observations were dependent, and needed different tests. We then used the matched pairs, bootstrap resampling technique to find a more narrow interval estimate for the possible difference in population means. We also used a permutation test to confirm that there is a statistically significant difference in abortion rates in 1988 and 2017.
+
+Interestingly, we found that New York has the highest mean abortion rate among all the states. We then compared the ratio of mean abortion rates of Texas to New York. We found there is statistically significant evidence that New York has a higher abortion rate than Texas.
 
 
 ### References
