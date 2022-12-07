@@ -362,6 +362,9 @@ qqline(boot.rat)
 From the bootstrap percentile test of the ratio of mean abortion rate of Texas vs New York, we see that (0.3672198 0.4995415) is one of the infinitely many 90% CIs that could contain the true ratio of mean abortion rates. From this we infer that New York has somewhere between 50% to 63% more abortions than Texas.
 
 
+## Conclusion
+
+Rachel Cu sucks and Will Curkan is the best.
 
 
 ### References
