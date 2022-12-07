@@ -274,7 +274,7 @@ hist(mean.diff)
 (sum(mean.diff > obs.diff) + 1)/(N+1)
 ```
 
-Using a permutation test of the mean rates, we see that 0 is contained in the interval that contains the true difference in mean rates. We concluse that there is not enough evidence to suggest the mean rate is different in 2017 from 1988
+Using a permutation test to see if the difference could have been obtained by chance, we see that the p-value is very low and at a 1% significance level we conclude that there is a statistically significant drop in the mean abortion rate from 1988 to 2017.
 
 
 Quick 2-sample bootstrap-t
