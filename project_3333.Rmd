@@ -41,6 +41,7 @@ abortions <- read.csv(file.choose())
 library(rlang, quietly = T)
 library(dplyr, quietly = T)
 library(DescTools, quietly = T)
+library(dplyr)
 ```
 
 
@@ -84,7 +85,7 @@ subset(mean_by_year, year == 2017)
 
 The mean abortion rate of all United States looks good. On average, the abortion rate for girls under 15 is .69, and the rate for women 40 and older is 2.65. Of course, this is given samples from each state in 2017 and is not necessarily representative of all abortions that occurred. We shall investigate further with statistical inference tests.
 
-The Guttmacher institute claims that the declining abortion rates are reversing as of 2017 saying "An increase in abortion numbers is a positive development if it means people are getting the health care they want and need" [2]. But, due to the possible uncertainty in the samples, we want to see if there is statistically significant evidence that the abortion rate was dropping in the first place.
+The Guttmacher institute claims that the declining abortion rates are reversing as of 2017 saying "An increase in abortion numbers is a positive development if it means people are getting the health care they want and need" [1]. But, due to the possible uncertainty in the samples, we want to see if there is statistically significant evidence that the abortion rate was dropping in the first place.
 
 ### Question: - Is there a statistically significant difference in mean abortion rates from the years 1988 - 2017.
 
@@ -105,7 +106,9 @@ abortions$MeanRate <- rowSums(abortions[3:10])/8
 ```
 
 ```{r,echo = F, fig.width=3.8, fig.height=3.8}
-hist(abortions$MeanRate, main = 'Mean Rate of Abortions')
+hist(abortions$MeanRate, main = 'Average Rate of Abortions in US from 1988 to 2017',
+     xlab = 'Average Rate',
+     cex.main = 0.7, cex.axis = 0.7, cex.lab = 0.8)
 ```
 
 The histogram shows the distribution of mean abortion rates is not normally distributed, and we are testing to see that there is a statistically significant difference in means among the years. We will use the permutation test to check if the model 
@@ -133,11 +136,6 @@ hist(results)
 
 Permuting the mean rate by year - making any given rate possible for any given year, we see that the probability of observing an $F_0$ statistic as high as the observedis 1e-04, so we will reject the null hypothesis $H_0: \mu_{1988} = ... = \mu_{2017}$ at even a 1% level of significance in favor of saying the abortion rate differs among the years.
 
-### Is the variance equal
-
-
-##################################
-
 
 ### Question: Is there a difference between the mean abortion rate for 1988 and 2017 in the U.S.
 
@@ -163,9 +161,13 @@ year2017 <- subset(abortions, year == 2017, select = c(year,
 
 
 ```{r density_88_17, fig.width=5.0, fig.height=5.0}
-plot(density(year1988$MeanRate), col = 'red', 
-     main = 'Density of the Mean Abortion Rate: 1988 and 2017')
+plot(density(year1988$MeanRate), col = 'red',
+     main = 'Density of the Mean Abortion Rate in 1988 and 2017',
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8,
+     xlab = 'Rate',
+     xlim= range(-10, 55), ylim = range(0, 0.11))
 lines(density(year2017$MeanRate), col = 'blue')
+#title ()
 legend('topright', c('red: 1988', 'blue: 2017'))
 ```
 
@@ -196,8 +198,10 @@ boot.dif[i] <- mean(x) - mean(y)
 quantile(boot.dif, c(.05,.95))
 
 par(mfrow=c(1,2))
-hist(boot.dif)
+hist(boot.dif, main = "Bootstrap distribution of difference in means",
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
 abline(v = mean.dif, col="red")
+
 
 qqnorm(boot.dif)
 qqline(boot.dif)
@@ -268,60 +272,41 @@ for (i in 1:N)
   mean.diff <- years_combined[indices] - years_combined[-indices]
 }
 
-hist(mean.diff)
+hist(mean.diff, main = 'Permutation distribution of difference in means',
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8,
+     xlim = range(-45, 25), ylim = range(0, 25))
 # abline(v = obs.diff)
 
 (sum(mean.diff > obs.diff) + 1)/(N+1)
 ```
 
-Using a permutation test to see if the difference could have been obtained by chance, we see that the p-value is very low and at a 1% significance level we conclude that there is a statistically significant drop in the mean abortion rate from 1988 to 2017.
+Using a permutation test to see if the difference could have been obtained by chance, we see that the p-value is very low and at a 1% significance level we conclude that there is a statistically significant drop in the mean abortion rate from 1988 to 2017 - that is the consensus among all tests.
 
+# State with the Highest Mean Abortion Rate
 
-Quick 2-sample bootstrap-t
+We also want to know which state has the highest mean abortion rate.
 
-```{r}
-n1 <- length(year1988$MeanRate)
-n2 <- length(year2017$MeanRate)
-Tstar <- numeric(N)
-SE <- sqrt(var(year2017$MeanRate)/n2 + var(year1988$MeanRate)/n1)
-
-for (i in 1:N)
-{
-  bootx <- sample(year2017$MeanRate, n2, replace = TRUE)
-  booty <- sample(year1988$MeanRate, n1, replace = TRUE)
-  Tstar[i] <- (mean(bootx) - mean(booty) - obs.diff) /
-               sqrt(var(bootx)/n2 + var(booty)/n1)
-}
-
-obs.diff - quantile(Tstar, c(.99, .01)) * SE
-
-
-t.test(year2017$MeanRate, year1988$MeanRate)
-```
-
-
-############################################################
-# New YORK!
 
 ```{r}
 abortions %>%  
   select(state,MeanRate) %>%
   group_by(state) %>% 
   mutate('state_mean' = mean(MeanRate)) %>% 
-  arrange(desc(state_mean))
+  arrange(desc(state_mean)) %>%
+  head(1) %>%
+  select(state,state_mean)
 ```
 
-NY has highest rate of abortion with mean = 31.43.
-We want to perform the interval test to confirm the true mean interval of NY
+So which state has the highest abortion rate? It's none other than the "Empire State" - NY has highest rate of abortion with mean = 31.43.
+Let's use resampling to find an interval estimate for the true mean abortion rate over all 30 years (1988 - 2017).
 
 ```{r}
 NY_rate <- filter(abortions, state == "NY") %>% select(MeanRate)
 NY_rate <- as.vector(unlist(NY_rate))
-NY_rate
-summary(NY_rate)
+#summary(NY_rate)
 ```
 
-```{r, fig.width=3.8, fig.height=3.8}
+```{r bootstrap t, fig.width=3.8, fig.height=3.8}
 xbar <- 31.43
 N <- 10^4
 n <- 17 #number of years
@@ -336,12 +321,13 @@ Tstar[i] <- (mean(x)-xbar)/(sd(x)/sqrt(n))
 quantile(Tstar, c(0.05, 0.95)) # the first value is negative and the second positive, so we switch
 
 xbar - quantile(Tstar, c(.95, .05))*sd(NY_rate)/sqrt(n)
-hist(Tstar, xlab = "T*", main = "Bootstrap distribution of T*")
-qqnorm(Tstar)
+hist(Tstar, xlab = "T*", main = "Bootstrap distribution of T*",
+     cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
+qqnorm(Tstar, cex.main = 0.7, cex.lab = 0.7, cex.axis = 0.8)
 qqline(Tstar)
 ```
 From the bootstrap distribution, we can see the 90% CI for the true mean is (28.73, 34.305)
 
 
 ### References
-[2] https://www.guttmacher.org/article/2022/06/long-term-decline-us-abortions-reverses-showing-rising-need-abortion-supreme-court 
+[1] https://www.guttmacher.org/article/2022/06/long-term-decline-us-abortions-reverses-showing-rising-need-abortion-supreme-court 
