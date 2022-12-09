@@ -1,6 +1,6 @@
 ---
 title: "Statistical Inference on U.S. Abortion Rate"
-subtitle: "Stat3333 - Statistical Inference"
+subtitle: "STAT3333 - Statistical Inference"
 author: "Will Curkan, Alina Ali, Rachel Cu, Jocelyn Torres, Henry Perez"
 date: "2022-11-12"
 output:
